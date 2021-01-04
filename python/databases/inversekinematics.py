@@ -148,6 +148,7 @@ if not __openravepy_build_doc__:
 else:
     from numpy import array
 
+from ..openravepy_ext import enum_to_dict
 from ..openravepy_ext import RobotStateSaver
 from ..openravepy_int import RaveCreateModule, RaveCreateIkSolver, IkParameterization, IkParameterizationType, RaveFindDatabaseFile, RaveDestroy, Environment, openravepyCompilerVersion, IkFilterOptions, KinBody, normalizeAxisRotation, quatFromRotationMatrix, RaveGetDefaultViewerType
 from . import DatabaseGenerator
@@ -579,7 +580,7 @@ class InverseKinematicsModel(DatabaseGenerator):
                 break
             freeindices = allfreeindices[index]
             solveindices = [i for i in self.manip.GetArmIndices() if not i in freeindices]
-        return filename
+        return filename.replace('IkParameterizationType.','')
 
     def getsourcefilename(self,read=False,outputlang='cpp'):
         if self.iktype is None:
@@ -589,7 +590,7 @@ class InverseKinematicsModel(DatabaseGenerator):
             solveindices, freeindices = self.GetDefaultIndices()
         else:
             solveindices, freeindices = self.solveindices, self.freeindices
-        basename = 'ikfast%s.%s.'%(self.ikfast.__version__,self.iktype)
+        basename = 'ikfast%s.%s.'%(self.ikfast.__version__,str(self.iktype).replace('IkParameterizationType.',''))
         basename += '_'.join(str(ind) for ind in sorted(solveindices))
         if len(freeindices)>0:
             basename += '_f'+'_'.join(str(ind) for ind in sorted(freeindices))
@@ -622,7 +623,7 @@ class InverseKinematicsModel(DatabaseGenerator):
                 filename = RaveFindDatabaseFile(os.path.join('kinematics.'+self.manip.GetInverseKinematicsStructureHash(self.iktype),basename),read)
                 if not read or len(filename) > 0 or self.freeindices is not None:
                     self.freeindices = fi
-                    return filename
+                    return filename.replace('IkParameterizationType.','')
 
             # user did not specify a set of freeindices, so the expected behavior is to search for the next loadable one
             index += 1
@@ -632,7 +633,7 @@ class InverseKinematicsModel(DatabaseGenerator):
                 break
             freeindices = allfreeindices[index]
             solveindices = [i for i in self.manip.GetArmIndices() if not i in freeindices]
-        return filename
+        return filename.replace('IkParameterizationType.','')
 
     def autogenerate(self,options=None):
         freejoints = None
@@ -1111,7 +1112,7 @@ class InverseKinematicsModel(DatabaseGenerator):
         parser.add_option('--ipython', '-i',action="store_true",dest='ipython',default=False,
                           help='if true will drop into the ipython interpreter right before ikfast is called')
         parser.add_option('--iktype', action='store',type='string',dest='iktype',default=None,
-                          help='The ik type to build the solver current types are: %s'%(', '.join(iktype.name for iktype in IkParameterizationType.values.values() if not int(iktype) & IkParameterizationType.VelocityDataBit )))
+                          help='The ik type to build the solver current types are: %s'%(', '.join(value for value, iktype in enum_to_dict(IkParameterizationType).iteritems() if not int(iktype) & IkParameterizationType.VelocityDataBit )))
         parser.add_option('--filepermissions', action='store',type='int',dest='filepermissions',default=-1,
                           help='The desired permissions for saving the iksolver files and directories')
         return parser
@@ -1123,8 +1124,8 @@ class InverseKinematicsModel(DatabaseGenerator):
         (options, leftargs) = parser.parse_args(args=args)
         if options.iktype is not None:
             # cannot use .names due to python 2.5 (or is it boost version?)
-            for value,type in IkParameterizationType.values.iteritems():
-                if type.name.lower() == options.iktype.lower():
+            for value,type in enum_to_dict(IkParameterizationType).iteritems():
+                if value.lower() == options.iktype.lower():
                     iktype = type
                     break
         else:
